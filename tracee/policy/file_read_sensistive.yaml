@@ -1,0 +1,37 @@
+apiVersion: tracee.aquasec.com/v1beta1
+kind: Policy
+metadata:
+  name: sample-data-filter
+  annotations:
+    description: sample data filter
+spec:
+  scope:
+    - global
+  rules:
+    - event: vfs_read
+      filters:
+        - data.pathname=/etc/*
+        - data.pathname=/etc/fstab
+        - data.pathname=/etc/crontab
+        - data.pathname=/etc/hosts
+        - data.pathname=/etc/hosts.allow
+        - data.pathname=/etc/hosts.deny
+        - data.pathname=/etc/issue
+        - data.pathname=/etc/motd
+        - data.pathname=/etc/mtab
+        - data.pathname=/etc/passwd
+        - data.pathname=/etc/profile
+        - data.pathname=/proc/cpuinfo
+        - data.pathname=/proc/filesystems
+        - data.pathname=/proc/interrupts
+        - data.pathname=/proc/ioports
+        - data.pathname=/proc/meminfo
+        - data.pathname=/proc/modules
+        - data.pathname=/proc/mounts
+        - data.pathname=/proc/stat
+        - data.pathname=/proc/swaps
+        - data.pathname=/var/log/lastlog
+        - data.pathname=/var/log/messages
+        - data.pathname=/var/log/wtmp
+        - data.pathname=/etc/services
+        - data.pathname=/etc/shadow

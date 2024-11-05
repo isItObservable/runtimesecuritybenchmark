@@ -1,0 +1,223 @@
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: otel
+  labels:
+    app: opentelemetry
+    app.kubernetes.io/component: oteld-statefullset
+spec:
+  mode: statefulset
+  replicas: 1
+  serviceAccount: otelcontribcol
+  image: otel/opentelemetry-collector-contrib:0.110.0
+  observability:
+    metrics:
+      enableMetrics: true
+  env:
+    - name: MY_POD_IP
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: status.podIP
+    - name: K8S_NODE_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    - name: DT_ENDPOINT
+      valueFrom:
+        secretKeyRef:
+          name: dynatrace
+          key: dynatrace_oltp_url
+    - name: DT_API_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: dynatrace
+          key: dt_api_token
+    - name: CLUSTERNAME
+      valueFrom:
+        secretKeyRef:
+          name: dynatrace
+          key: clustername
+    - name: OTEL_SERVICE_NAME
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: metadata.labels['app.kubernetes.io/component']
+    - name: OTEL_RESOURCE_ATTRIBUTES
+      value: service.name=$(OTEL_SERVICE_NAME)
+  config:
+    receivers:
+
+
+      prometheus:
+        config:
+          scrape_configs:
+            - job_name: opentelemetry-collector
+              scrape_interval: 5s
+              static_configs:
+                - targets:
+                    - ${MY_POD_IP}:8888
+            - job_name: tracee
+              scrape_interval: 5s
+              static_configs:
+                - targets:
+                    - tracee-metrics.tracee.svc.cluster.local:3366
+
+
+      otlp:
+        protocols:
+          grpc: {}
+          http: {}
+    processors:
+      batch:
+        send_batch_max_size: 1000
+        timeout: 30s
+        send_batch_size : 800
+
+      memory_limiter:
+        check_interval: 1s
+        limit_percentage: 70
+        spike_limit_percentage: 30
+
+
+
+      k8sattributes/k8S:
+        extract:
+          metadata:
+            - k8s.cluster.uid
+        pod_association:
+          - sources:
+              - from: resource_attribute
+                name: k8s.namespace.name
+      k8sattributes:
+        extract:
+          metadata:
+            - k8s.pod.name
+            - k8s.pod.uid
+            - k8s.deployment.name
+            - k8s.statefulset.name
+            - k8s.daemonset.name
+            - k8s.cronjob.name
+            - k8s.namespace.name
+            - k8s.node.name
+            - k8s.cluster.uid
+        pod_association:
+          - sources:
+              - from: resource_attribute
+                name: k8s.pod.name
+              - from: resource_attribute
+                name: k8s.namespace.name
+          - sources:
+              - from: resource_attribute
+                name: k8s.pod.ip
+          - sources:
+              - from: resource_attribute
+                name: k8s.pod.uid
+          - sources:
+              - from: connection
+      resource:
+        attributes:
+          - key: k8s.cluster.name
+            value: ${CLUSTERNAME}
+            action: insert
+
+
+
+      transform/k8s:
+        error_mode: ignore
+        log_statements:
+          - context: log
+            statements:
+              - merge_maps(cache, body, "upsert")
+              - set(attributes["k8s.object.kind"], cache["kind"]) where cache["kind"] != nil
+              - merge_maps(cache,cache["metadata"], "upsert") where cache["metadata"] != nil
+              - set(attributes["k8s.namespace.name"], cache["namespace"]) where cache["namespace"] != nil
+              - merge_maps(cache,ExtractPatterns(String(cache["ownerReferences"]),"^.*kind\\\":\\\"(?P<kindowner>[^\"]*)\".*name\\\":\\\"(?P<nameowner>[^\"]*)\\\".*$"), "upsert") where cache["ownerReferences"] != nil
+              - set(attributes["dt.kubernetes.workload.kind"], ConvertCase( cache["kindowner"], "lower") ) where cache["kindowner"] != nil
+              - set(attributes["dt.kubernetes.workload.name"], cache["nameowner"]) where cache["nameowner"] != nil
+              - set(attributes["k8s.object.labels"], cache["labels"]) where cache["labels"] != nil
+              - set(attributes["k8s.pod.name"], cache["name"]) where cache["name"] != nil
+              - merge_maps(cache,cache["spec"], "upsert") where cache["spec"] != nil
+              - set(attributes["k8s.object.nodeselector"], String(cache["nodeSelector"])) where cache["nodeSelector"]!= nil
+              - set(attributes["k8s.node.name"], cache["nodeName"]) where cache["nodeName"]!= nil
+              - set(attributes["k8s.status"],cache["status"]) where cache["status"] != nil
+
+      transform:
+        error_mode: ignore
+        log_statements:
+          - context: resource
+            statements:
+              - set(attributes["dt.kubernetes.workload.kind"], "statefulset") where IsString(attributes["k8s.statefulset.name"])
+              - set(attributes["dt.kubernetes.workload.name"], attributes["k8s.statefulset.name"]) where IsString(attributes["k8s.statefulset.name"])
+              - set(attributes["dt.kubernetes.workload.kind"], "deployment") where IsString(attributes["k8s.deployment.name"])
+              - set(attributes["dt.kubernetes.workload.name"], attributes["k8s.deployment.name"]) where IsString(attributes["k8s.deployment.name"])
+              - set(attributes["dt.kubernetes.workload.kind"], "daemonset") where IsString(attributes["k8s.daemonset.name"])
+              - set(attributes["dt.kubernetes.workload.name"], attributes["k8s.daemonset.name"]) where IsString(attributes["k8s.daemonset.name"])
+              - set(attributes["dt.kubernetes.cluster.id"], attributes["k8s.cluster.uid"]) where IsString(attributes["k8s.cluster.uid"])
+
+        trace_statements:
+          - context: resource
+            statements:
+              - set(attributes["dt.kubernetes.workload.kind"], "statefulset") where IsString(attributes["k8s.statefulset.name"])
+              - set(attributes["dt.kubernetes.workload.name"], attributes["k8s.statefulset.name"]) where IsString(attributes["k8s.statefulset.name"])
+              - set(attributes["dt.kubernetes.workload.kind"], "deployment") where IsString(attributes["k8s.deployment.name"])
+              - set(attributes["dt.kubernetes.workload.name"], attributes["k8s.deployment.name"]) where IsString(attributes["k8s.deployment.name"])
+              - set(attributes["dt.kubernetes.workload.kind"], "daemonset") where IsString(attributes["k8s.daemonset.name"])
+              - set(attributes["dt.kubernetes.workload.name"], attributes["k8s.daemonset.name"]) where IsString(attributes["k8s.daemonset.name"])
+              - set(attributes["dt.kubernetes.cluster.id"], attributes["k8s.cluster.uid"]) where IsString(attributes["k8s.cluster.uid"])
+
+        metric_statements:
+          - context: resource
+            statements:
+              - set(attributes["dt.kubernetes.workload.kind"], "statefulset") where IsString(attributes["k8s.statefulset.name"])
+              - set(attributes["dt.kubernetes.workload.name"], attributes["k8s.statefulset.name"]) where IsString(attributes["k8s.statefulset.name"])
+              - set(attributes["dt.kubernetes.workload.kind"], "deployment") where IsString(attributes["k8s.deployment.name"])
+              - set(attributes["dt.kubernetes.workload.name"], attributes["k8s.deployment.name"]) where IsString(attributes["k8s.deployment.name"])
+              - set(attributes["dt.kubernetes.workload.kind"], "daemonset") where IsString(attributes["k8s.daemonset.name"])
+              - set(attributes["dt.kubernetes.workload.name"], attributes["k8s.daemonset.name"]) where IsString(attributes["k8s.daemonset.name"])
+              - set(attributes["dt.kubernetes.cluster.id"], attributes["k8s.cluster.uid"]) where IsString(attributes["k8s.cluster.uid"])
+
+      cumulativetodelta: {}
+
+      filter:
+        error_mode: ignore
+        metrics:
+          metric:
+            - 'IsMatch(name, "kafka.consumer.*")'
+
+    exporters:
+
+
+      otlphttp:
+        endpoint: ${DT_ENDPOINT}/api/v2/otlp
+        headers:
+          Authorization: "Api-Token ${DT_API_TOKEN}"
+      debug:
+        verbosity: detailed
+
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter,k8sattributes,transform,batch]
+          exporters: [otlphttp]
+        metrics:
+          receivers: [otlp,prometheus]
+          processors: [memory_limiter,k8sattributes,filter,transform,cumulativetodelta,batch]
+          exporters: [otlphttp]
+        logs:
+          receivers: [otlp]
+          processors: [memory_limiter,k8sattributes,transform,batch]
+          exporters: [otlphttp]
+
+      telemetry:
+        metrics:
+          address: ${MY_POD_IP}:8888
+        traces:
+          processors:
+            - batch:
+                exporter:
+                  otlp:
+                    protocol: grpc/protobuf
+                    endpoint: http://localhost:4317
+

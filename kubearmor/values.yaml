@@ -1,0 +1,61 @@
+autoDeploy: false
+
+# operator will deploy pinned images for each application
+imagePinning: false
+
+# pinned images
+oci_meta:
+  repo: kubearmor
+  images:
+    kubearmor:
+      image: kubearmor
+      tag: stable
+    kubearmorInit:
+      image: kubearmor-init
+      tag: stable
+    kubearmorRelay:
+      image: kubearmor-relay-server
+      tag: latest
+    kubearmorController:
+      image: kubearmor-controller
+      tag: latest
+    kubearmorSnitch:
+      image: kubearmor-snitch
+      tag: latest
+    kubearmorOperator:
+      image: kubearmor-operator
+      tag: latest
+    kubeRbacProxy:
+      image: kube-rbac-proxy
+      tag: v0.15.0
+
+# in case if image pinning is disabled
+kubearmorOperator:
+  name: kubearmor-operator
+  image:
+    repository: kubearmor/kubearmor-operator
+    tag: ""
+  imagePullPolicy: IfNotPresent
+  initDeploy: true
+
+kubearmorConfig:
+  defaultCapabilitiesPosture: audit
+  defaultFilePosture: audit
+  defaultNetworkPosture: audit
+  defaultVisibility: process,network,file,capability
+  enableStdOutLogs: true
+  enableStdOutAlerts: true
+  enableStdOutMsgs: true
+  seccompEnabled: true
+  alertThrottling: true
+  maxAlertPerSec: 10
+  throttleSec: 30
+
+# DO NOT CHANGE THIS VALUES 
+# changing these values will require code changes with the operator
+# these secret names should match with the secrets managed by the operator
+tlsSecrets:
+  kubearmorCa: kubearmor-ca
+  kubearmorClient: kubearmor-client-certs
+  relayServer: kubearmor-relay-server-certs
+  controllerWebhook: kubearmor-controller-webhook-server-cert

@@ -1,0 +1,23 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "k8s-api-calls"
+spec:
+  kprobes:
+    - call: "tcp_connect"
+      syscall: false
+      args:
+        - index: 0
+          type: "sock"
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: "DAddr"
+              values:
+                - "10.43.0.1"
+                - "10.1.0.0/20"
+          matchBinaries:
+            - operator: "NotIn"
+              values:
+                - "/usr/bin/rancher"
+                - "/usr/bin/dumb-init"

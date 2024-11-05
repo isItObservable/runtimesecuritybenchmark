@@ -1,0 +1,16 @@
+apiVersion: tracee.aquasec.com/v1beta1
+kind: Policy
+metadata:
+  name: otel-http-traffic
+  annotations:
+    description: this policy capture all the http traffic of the otel namespace
+spec:
+  scope:
+    - container
+  rules:
+    - event: net_packet_http_request
+      filters:
+        - podNamespace=otel-demo
+    - event: net_packet_http_response
+      filters:
+        - podNamespace=otel-demo

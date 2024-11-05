@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubearmor-prometheus-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      kubearmor-app: kubearmor-prometheus-exporter
+  template:
+    metadata:
+      labels:
+        kubearmor-app: kubearmor-prometheus-exporter
+      annotations:
+        kubearmor-policy: audited
+    spec:
+      containers:
+        - name: kubearmor-prometheus-exporter
+          image: hrexed/kubearmor-prometheus-exporter:0.1
+          env:
+            - name: KUBEARMOR_SERVICE
+              value: kubearmor.kubearmor.svc:32767
+          ports:
+            - containerPort: 9100
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubearmor-prometheus-exporter
+spec:
+  type: ClusterIP
+  selector:
+    kubearmor-app: kubearmor-prometheus-exporter
+  ports:
+    - name: http
+      port: 9100
+      targetPort: 9100
+      appProtocol: http

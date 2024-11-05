@@ -1,0 +1,22 @@
+apiVersion: security.kubearmor.com/v1
+kind: KubeArmorClusterPolicy
+metadata:
+  name: ksp-nist-remote-access-and-control
+
+spec:
+  tags: ["NIST","system","ksp","AC-17(1)"]
+  message: "warning! someone tried to remote access and control"
+  selector:
+    matchExpressions:
+      - key: namespace
+        operator: NotIn
+        values:
+          - kube-system
+          - istio-system
+          - dynatrace
+  process:
+    severity: 4
+    matchPaths:
+      - path: /usr/bin/ssh
+      - path: /etc/ssh
+    action: Audit

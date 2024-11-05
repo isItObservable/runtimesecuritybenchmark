@@ -1,0 +1,215 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: internal-kubectl
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: modify-pods
+rules:
+  - apiGroups: [""]
+    resources: ["pods","namespaces"]
+    verbs: ["get", "list", "delete"]
+  - apiGroups: [ "" ]
+    resources: [ "pods/exec" ]
+    verbs: [ "create" ]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: modify-pods-to-sa
+roleRef:
+  kind: ClusterRole
+  name: modify-pods
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+  - kind: ServiceAccount
+    name: internal-kubectl
+    namespace: goat-app
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: suspicous-process
+spec:
+  schedule: "*/15 * * * *"
+  concurrencyPolicy: Replace
+  failedJobsHistoryLimit: 1
+
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 100
+      template:
+        spec:
+
+          serviceAccountName: internal-kubectl
+          restartPolicy: Never
+          containers:
+            - name: tester
+              image: hrexed/kubectl:0.18
+              command:
+                - "/bin/bash"
+                - "./proc.sh"
+                - "exit"
+---
+#apiVersion: batch/v1
+#kind: CronJob
+#metadata:
+#  name: suspicous-discover-port
+#spec:
+#  schedule: "*/20 * * * *"
+#  concurrencyPolicy: Replace
+#  failedJobsHistoryLimit: 1
+#  jobTemplate:
+#    spec:
+#      template:
+###        spec:
+#          serviceAccountName: internal-kubectl
+#          restartPolicy: Never
+#          containers:
+#            - name: tester
+#              image: hrexed/kubectl:0.16
+#              command:
+#                - "/bin/bash"
+#                - "./nmap.sh"
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: suspicous-stress-ng
+
+spec:
+  schedule: "*/20 * * * *"
+  concurrencyPolicy: Replace
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 100
+      template:
+        spec:
+          serviceAccountName: internal-kubectl
+          restartPolicy: Never
+          containers:
+            - name: tester
+              image: hrexed/kubectl:0.18
+              command:
+                - "/bin/bash"
+                - "./stress-ng.sh"
+                - "exit"
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: suspicous-pwd
+spec:
+  schedule: "*/15 * * * *"
+  concurrencyPolicy: Replace
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 100
+      template:
+        spec:
+          serviceAccountName: internal-kubectl
+          restartPolicy: Never
+          containers:
+            - name: tester
+              image: hrexed/kubectl:0.17
+              command:
+                - "/bin/bash"
+                - "./password.sh"
+                - "exit"
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: suspicous-groups
+spec:
+  schedule: "*/15 * * * *"
+  concurrencyPolicy: Replace
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 100
+      template:
+        spec:
+          serviceAccountName: internal-kubectl
+          restartPolicy: Never
+          containers:
+            - name: tester
+              image: hrexed/kubectl:0.18
+              command:
+                - "/bin/bash"
+                - "./proc_2.sh"
+                - "exit"
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: suspicous-tail
+spec:
+  schedule: "*/15 * * * *"
+  concurrencyPolicy: Replace
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 100
+      template:
+        spec:
+          serviceAccountName: internal-kubectl
+          restartPolicy: Never
+          containers:
+            - name: tester
+              image: madhuakula/hacker-container:latest
+              command:
+                - "linenum"
+                - "exit"
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: suspicous-amicontained
+spec:
+  schedule: "*/15 * * * *"
+  concurrencyPolicy: Replace
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 100
+      template:
+        spec:
+
+          serviceAccountName: internal-kubectl
+          restartPolicy: Never
+          containers:
+            - name: tester
+              image: madhuakula/hacker-container:latest
+              command:
+                - "amicontained"
+                - "exit"
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: suspicous-whocan-kube
+spec:
+  schedule: "*/15 * * * *"
+  concurrencyPolicy: Replace
+  failedJobsHistoryLimit: 1
+
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 100
+      template:
+        spec:
+
+          serviceAccountName: internal-kubectl
+          restartPolicy: Never
+          containers:
+            - name: tester
+              image: madhuakula/hacker-container:latest
+              command:
+                - "kubectl-who-can"
+                - "exit"
+              args: ["create","pod"]

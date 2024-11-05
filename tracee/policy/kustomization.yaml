@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - extend-default-policy.yaml
+  - new_containers.yaml
+  - not_containers.yaml
+  - scope_comm.yaml
+  - signature_events.yaml
+  - uid_higher_than_or_equal_to_zero.yaml
+  - file_read_sensistive.yaml
