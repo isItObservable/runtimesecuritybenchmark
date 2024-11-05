@@ -3,7 +3,8 @@
 
 ## Episode : Tetragon vs Falco vs KubeArmor
 This repository contains the files utilized during all the files required to run the test comparing Falco , Tetragon and Kubearmor
-<p align="left "><img src="/image/tetragon.png" width="20%" alt="tetragon Logo" /></p><p align="center "><img src="/image/falco_logo.png" width="20%" alt="falco Logo" /></p><p align="right "><img src="/image/kubearmor.png" width="20%" alt="kubearmor Logo" /></p>/p><p align="right "><img src="/image/tracee.png" width="20%" alt="tracee Logo" /></p>
+<p align="left "><img src="/image/tetragon.png" width="20%" alt="tetragon Logo" /><img src="/image/falco_logo.png" width="20%" alt="falco Logo" />
+<img src="/image/kubearmor.png" width="20%" alt="kubearmor Logo" /><img src="/image/tracee.png" width="40%" alt="tracee Logo" /></p>
 
 this repository will use solutions to measure the usage of those agents, we will rely on: 
 * the OpenTelemetry Demo
