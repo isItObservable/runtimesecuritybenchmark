@@ -150,7 +150,8 @@ else
               helm repo update
               helm upgrade --install kubescape kubescape/kubescape-operator -n kubescape --create-namespace -f kubescape/values.yaml --set clusterName=`kubectl config current-context`
               kubectl apply -f opentelemetry/openTelemetry-manifest_statefulset_kubescape.yaml
-
+              kubectl delete -f openTelemetry/deploy_1_12.yaml -n otel-demo
+              kubectl apply -f  openTelemetry/deploy_1_12.yaml -n otel-demo
           else
              echo "No security solution deployed"
              kubectl apply -f opentelemetry/openTelemetry-manifest_statefulset_kubearmor.yaml
