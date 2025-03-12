@@ -128,7 +128,7 @@ echo '
   ' | kubectl replace -n ingress-nginx -f -
 kubectl rollout restart deployment ingress-nginx-controller -n ingress-nginx
 
-# Falco
+
 if [  "$TYPE" = 'falco' ]; then
   echo " Installing Falco"
   helm repo add falcosecurity https://falcosecurity.github.io/charts
@@ -166,30 +166,45 @@ else
 
     else
 
-      if ["$TYPE" = "tracee" ]; then
+      if [ "$TYPE" = "tracee" ]; then
         helm repo add aqua https://aquasecurity.github.io/helm-charts/
         helm repo update
         helm install tracee aqua/tracee --namespace tracee --create-namespace
       else
-         echo "No security solution deployed"
+        if [ "$TYPE" = "kubescape" ]; then
+          # Install Kubescape
+          helm repo add kubescape https://kubescape.github.io/helm-charts/
+          helm repo update
+          helm upgrade --install kubescape kubescape/kubescape-operator -n kubescape --create-namespace -f kubescape/values.yaml --set clusterName=`kubectl config current-context`
+
+
+        else
+          echo "No security solution deployed"
+        fi
       fi
     fi
   fi
 fi
 
+# Install inspektor gadget
+helm repo add gadget https://inspektor-gadget.github.io/charts
+helm install gadget gadget/gadget --namespace=gadget --create-namespace -f inspecktor-gadget/values.yaml
+kubectl apply -f inspecktor-gadget/configmap.yaml -n gadget
+kubectl rollout restart ds gadget -n gadget
+kubectl apply -f inspecktor-gadget/gadget_top.yaml
 #### Deploy the Dynatrace Operator
 kubectl create namespace dynatrace
-kubectl apply -f https://github.com/Dynatrace/dynatrace-operator/releases/download/v1.2.2/kubernetes.yaml
-kubectl apply -f https://github.com/Dynatrace/dynatrace-operator/releases/download/v1.2.2/kubernetes-csi.yaml
+kubectl apply -f https://github.com/Dynatrace/dynatrace-operator/releases/download/v1.4.0/kubernetes.yaml
+kubectl apply -f https://github.com/Dynatrace/dynatrace-operator/releases/download/v1.4.0/kubernetes-csi.yaml
 kubectl -n dynatrace wait pod --for=condition=ready --selector=app.kubernetes.io/name=dynatrace-operator,app.kubernetes.io/component=webhook --timeout=300s
 kubectl -n dynatrace create secret generic dynakube --from-literal="apiToken=$DTOPERATORTOKEN" --from-literal="dataIngestToken=$DTTOKEN"
-sed -i "s,TENANTURL_TOREPLACE,$DTURL," dynatrace/dynakube.yaml
-sed -i "s,CLUSTER_NAME_TO_REPLACE,$CLUSTERNAME,"  dynatrace/dynakube.yaml
+sed -i '' "s,TENANTURL_TOREPLACE,$DTURL," dynatrace/dynakube.yaml
+sed -i '' "s,CLUSTER_NAME_TO_REPLACE,$CLUSTERNAME,"  dynatrace/dynakube.yaml
 
 ### Update the ip of the ip adress for the ingres
 #TODO to update this part to create the various Gateway rules
-sed -i "s,IP_TO_REPLACE,$IP," opentelemetry/deploy_1_11.yaml
-sed -i "s,IP_TO_REPLACE,$IP," opentelemetry/loadtest_job.yaml
+sed -i ''  "s,IP_TO_REPLACE,$IP," opentelemetry/deploy_1_12.yaml
+sed -i ''  "s,IP_TO_REPLACE,$IP," opentelemetry/loadtest_job.yaml
 #Deploy collector
 kubectl create secret generic dynatrace  --from-literal=dynatrace_oltp_url="$DTURL" --from-literal=clustername="$CLUSTERNAME"  --from-literal=clusterid=$CLUSTERID  --from-literal=dt_api_token="$DTTOKEN"
 kubectl label namespace  default oneagent=false
@@ -199,7 +214,7 @@ if [  "$TYPE" = 'falco' ]; then
 else
   if [  "$TYPE" = 'tetragon' ]; then
       kubectl apply -f opentelemetry/openTelemetry-manifest_statefulset_tetragon.yaml
-      kubectl apply -k tetragon
+      kubectl apply -k tetragon/policies
   else
      if [  "$TYPE" = 'kubearmor' ]; then
         kubectl apply -f opentelemetry/openTelemetry-manifest_statefulset_kubearmor.yaml
@@ -208,7 +223,11 @@ else
           if [ "$TYPE" = 'tracee' ]; then
            kubectl apply -f  opentelemetry/openTelemetry-manifest_statefulset_tracee.yaml
           else
-            kubectl apply -f opentelemetry/openTelemetry-manifest_statefulset_kubearmor.yaml
+            if [ "$TYPE" = "kubescape" ]; then
+              kubectl apply -f opentelemetry/openTelemetry-manifest_statefulset_kubescape.yaml
+            else
+              kubectl apply -f opentelemetry/openTelemetry-manifest_statefulset_kubearmor.yaml
+            fi
           fi
       fi
   fi
@@ -218,7 +237,7 @@ kubectl apply -f opentelemetry/openTelemetry-manifest_ds.yaml
 kubectl apply -f dynatrace/dynakube.yaml -n dynatrace
 kubectl create ns otel-demo
 kubectl label namespace  otel-demo oneagent=false
-kubectl apply -f opentelemetry/deploy_1_11.yaml -n otel-demo
+kubectl apply -f opentelemetry/deploy_1_12.yaml -n otel-demo
 
 
 kubectl create ns goat-app
@@ -235,7 +254,6 @@ helm install unguard  oci://ghcr.io/dynatrace-oss/unguard/chart/unguard --set ma
 echo "--------------Demo--------------------"
 echo "url of the demo: "
 echo " otel-demo : http://oteldemo.$IP.nip.io"
-echo "hipstershop url: http://hipstershop.$IP.nip.io"
 echo "========================================================"
 
 

@@ -1,0 +1,85 @@
+# Default values for gadget.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+config:
+  # -- How to get containers start/stop notifications (auto, crio, podinformer, nri, fanotify+ebpf")
+  hookMode: auto
+
+  # -- Whether to use the fallback pod informer
+  fallbackPodInformer: true
+
+  # -- Containerd CRI Unix socket path
+  containerdSocketPath: "/run/containerd/containerd.sock"
+  # -- CRI-O CRI Unix socket path
+  crioSocketPath: "/run/crio/crio.sock"
+  # -- Docker Engine API Unix socket path
+  dockerSocketPath: "/run/docker.sock"
+  # -- Podman API Unix socket path
+  podmanSocketPath: "/run/podman/podman.sock"
+
+  # -- Enable experimental features
+  experimental: false
+
+  # -- Events buffer length. A low value could impact horizontal scaling.
+  eventsBufferLength: "16384"
+
+  # -- Daemon Log Level. Valid values are: "trace", "debug", "info", "warning", "error", "fatal", "panic"
+  daemonLogLevel: "info"
+
+  # -- Verify image-based gadgets
+  verifyGadgets: true
+
+  # -- Public keys used to verify image-based gadgets
+  gadgetsPublicKeys:
+    - |
+      -----BEGIN PUBLIC KEY-----
+      MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoDOC0gYSxZTopenGmX3ZFvQ1DSfh
+      Ir4EKRt5jC+mXaJ7c7J+oREskYMn/SfZdRHNSOjLTZUMDm60zpXGhkFecg==
+      -----END PUBLIC KEY-----
+
+  # -- List of allowed gadgets.
+  allowedGadgets: []
+
+  # -- Disallow pulling gadgets.
+  disallowGadgetsPulling: false
+
+  # -- Mount pull secret (gadget-pull-secret) to pull image-based gadgets from private registry
+  mountPullSecret: false
+
+  # -- Set AppArmor profile.
+  appArmorProfile: "unconfined"
+
+  # -- Enable OpenTelemetry metrics listener
+  otelMetricsListen: true
+
+  # -- Address to listen for OpenTelemetry metrics
+  otelMetricsAddress: "0.0.0.0:2224"
+
+image:
+  # -- Container repository for the container image
+  repository: ghcr.io/inspektor-gadget/inspektor-gadget
+  # -- Pull policy for the container image
+  pullPolicy: Always
+  # -- Tag for the container image
+  tag: ""
+
+# -- Node selector used by `gadget` container
+nodeSelector:
+  kubernetes.io/os: linux
+
+# -- Affinity used by `gadget` container
+affinity: {}
+
+# -- Capabilities used by `gadget` container
+capabilities: {}
+
+# -- Tolerations used by `gadget` container
+tolerations: {}
+
+# -- Skip Helm labels
+skipLabels: true
+
+# -- Labels to be added to all other resources.
+additionalLabels:
+  labels: {}

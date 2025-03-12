@@ -66,8 +66,8 @@ if [  "$OLD" = 'falco' ]; then
 else
   if [  "$OLD" = 'tetragon' ]; then
       kubectl delete -f opentelemetry/openTelemetry-manifest_statefulset_tetragon.yaml
-      kubectl delete -k tetragon
-      helm uninstall tetragon/policicies -n tetragon
+      kubectl delete -k tetragon/policicies -n tetragon
+      helm uninstall tetragon -n tetragon
   else
      if [  "$OLD" = 'kubearmor' ]; then
         kubectl delete -f opentelemetry/openTelemetry-manifest_statefulset_kubearmor.yaml
@@ -80,7 +80,12 @@ else
           kubectl delete -k tracee/policy
           helm uninstall tracee -n tracee
         else
-          kubectl delete -f opentelemetry/openTelemetry-manifest_statefulset_kubearmor.yaml
+          if [ "$OLD" = 'kubedscape' ]; then
+            kubebectl uninstall kubescape -n kubescape
+            kubectl delete -f opentelemetry/openTelemetry-manifest_statefulset_kubescape.yaml
+          else
+            kubectl delete -f opentelemetry/openTelemetry-manifest_statefulset_kubearmor.yaml
+          fi
         fi
       fi
   fi
@@ -115,7 +120,7 @@ else
     helm install tetragon cilium/tetragon -n tetragon --create-namespace -f tetragon/values.yaml
 
     kubectl apply -f opentelemetry/openTelemetry-manifest_statefulset_tetragon.yaml
-    kubectl apply -k tetragon/policicies
+
 
   else
     if [  "$TYPE" = 'kubearmor' ]; then
@@ -128,7 +133,7 @@ else
     kubectl apply -f kubearmor/kubeArmorConfig.yaml
 
     kubectl apply -f opentelemetry/openTelemetry-manifest_statefulset_kubearmor.yaml
-    kubectl apply -k kubearmor/policies
+   # kubectl apply -k kubearmor/policies
 
     else
        if [ "$TYPE" = 'tracee' ]; then
@@ -139,8 +144,18 @@ else
          kubectl apply -f tracee/servicemetric.yaml -n tracee
          kubectl apply -f  opentelemetry/openTelemetry-manifest_statefulset_tracee.yaml
        else
-          echo "No security solution deployed"
-          kubectl apply -f opentelemetry/openTelemetry-manifest_statefulset_kubearmor.yaml
+          if [ "$TYPE" = "kubescape" ]; then
+              # Install Kubescape
+              helm repo add kubescape https://kubescape.github.io/helm-charts/
+              helm repo update
+              helm upgrade --install kubescape kubescape/kubescape-operator -n kubescape --create-namespace -f kubescape/values.yaml --set clusterName=`kubectl config current-context`
+              kubectl apply -f opentelemetry/openTelemetry-manifest_statefulset_kubescape.yaml
+
+          else
+             echo "No security solution deployed"
+             kubectl apply -f opentelemetry/openTelemetry-manifest_statefulset_kubearmor.yaml
+          fi
+
        fi
 
     fi

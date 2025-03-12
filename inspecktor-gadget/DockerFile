@@ -1,0 +1,39 @@
+FROM ubuntu
+# Set non-interactive mode for APT
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    tar \
+    git \
+    ca-certificates \
+    && apt-get clean
+
+# Install kubectl
+RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && \
+    chmod +x kubectl && \
+    mv kubectl /usr/local/bin/
+
+# Install krew
+RUN set -x; \
+    cd "$(mktemp -d)" && \
+    OS="$(uname | tr '[:upper:]' '[:lower:]')" && \
+    ARCH="$(uname -m | sed -e 's/x86_64/amd64/' -e 's/\(arm\)\(64\)\?.*/\1\2/' -e 's/aarch64$/arm64/')" && \
+    KREW="krew-${OS}_${ARCH}" && \
+    curl -fsSLO "https://github.com/kubernetes-sigs/krew/releases/latest/download/${KREW}.tar.gz" && \
+    tar zxvf "${KREW}.tar.gz" && \
+    ./"${KREW}" install krew && \
+    rm -rf "${KREW}.tar.gz" ./"${KREW}"
+
+# Set up PATH for krew
+ENV PATH="${KREW_ROOT:-/root/.krew}/bin:$PATH"
+
+# Verify installation
+RUN kubectl krew version && kubectl version --client
+
+# Set the entrypoint to keep the container alive
+RUN kubectl krew install gadget
+COPY /script /script
+WORKDIR /script
+RUN chmod +x /script/*.sh

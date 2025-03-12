@@ -13,6 +13,23 @@ metadata:
     app: otelcontribcol
 rules:
   - apiGroups:
+      - "spdx.softwarecomposition.kubescape.io"
+    resources:
+      - vulnerabilitymanifestsummaries
+      - vulnerabilitymanifests
+      - vulnerabilitysummaries
+      - workloadconfigurationscansummaries
+      - generatednetworkpolicies
+      - vulnerabilitymanifestsummaries/status
+      - vulnerabilitymanifests/status
+      - vulnerabilitysummaries/status
+      - workloadconfigurationscansummaries/status
+      - generatednetworkpolicies/status
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
       - ""
     resources:
       - events

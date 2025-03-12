@@ -49,6 +49,25 @@ spec:
     receivers:
 
 
+      k8sobjects:
+        auth_type: serviceAccount
+        objects:
+          - name: vulnerabilitymanifests
+            group: spdx.softwarecomposition.kubescape.io
+            namespaces: [ kubescape ]
+            interval: 15m
+          - name: vulnerabilitysummaries
+            group: spdx.softwarecomposition.kubescape.io
+            interval: 15m
+          - name: vulnerabilitymanifestsummaries
+            group: spdx.softwarecomposition.kubescape.io
+            interval: 15m
+          - name: workloadconfigurationscansummaries
+            group: spdx.softwarecomposition.kubescape.io
+            interval: 15m
+          - name: generatednetworkpolicies
+            group: spdx.softwarecomposition.kubescape.io
+            interval: 15m
       prometheus:
         config:
           scrape_configs:
@@ -57,7 +76,50 @@ spec:
               static_configs:
                 - targets:
                     - ${MY_POD_IP}:8888
-
+            - job_name: kubescape-nodeagent
+              scrape_interval: 5s
+              static_configs:
+                - targets:
+                    - node-agent.kubescape.svc.cluster.local:8080
+            - job_name: kubernetes-pods
+              kubernetes_sd_configs:
+                  - role: pod
+              relabel_configs:
+                - action: keep
+                  regex: true
+                  source_labels:
+                    - __meta_kubernetes_pod_annotation_prometheus_io_scrape
+                - action: replace
+                  regex: (https?)
+                  source_labels:
+                    - __meta_kubernetes_pod_annotation_prometheus_io_scheme
+                  target_label: __scheme__
+                - action: replace
+                  regex: (.+)
+                  source_labels:
+                    - __meta_kubernetes_pod_annotation_prometheus_io_path
+                  target_label: __metrics_path__
+                - action: replace
+                  regex: ([^:]+)(?::\d+)?;(\d+)
+                  replacement: $1:$2
+                  source_labels:
+                    - __address__
+                    - __meta_kubernetes_pod_annotation_prometheus_io_port
+                  target_label: __address__
+                - action: labelmap
+                  regex: __meta_kubernetes_pod_label_(.+)
+                - action: replace
+                  source_labels:
+                    - __meta_kubernetes_namespace
+                  target_label: kubernetes_namespace
+                - action: replace
+                  source_labels:
+                    - __meta_kubernetes_pod_name
+                  target_label: kubernetes_pod_name
+                - action: drop
+                  regex: Pending|Succeeded|Failed
+                  source_labels:
+                    - __meta_kubernetes_pod_phase
 
 
       otlp:
@@ -85,6 +147,7 @@ spec:
           - sources:
               - from: resource_attribute
                 name: k8s.namespace.name
+
       k8sattributes:
         extract:
           metadata:
@@ -118,25 +181,6 @@ spec:
             action: insert
 
 
-
-      transform/k8s:
-        error_mode: ignore
-        log_statements:
-          - context: log
-            statements:
-              - merge_maps(cache, body, "upsert")
-              - set(attributes["k8s.object.kind"], cache["kind"]) where cache["kind"] != nil
-              - merge_maps(cache,cache["metadata"], "upsert") where cache["metadata"] != nil
-              - set(attributes["k8s.namespace.name"], cache["namespace"]) where cache["namespace"] != nil
-              - merge_maps(cache,ExtractPatterns(String(cache["ownerReferences"]),"^.*kind\\\":\\\"(?P<kindowner>[^\"]*)\".*name\\\":\\\"(?P<nameowner>[^\"]*)\\\".*$"), "upsert") where cache["ownerReferences"] != nil
-              - set(attributes["dt.kubernetes.workload.kind"], ConvertCase( cache["kindowner"], "lower") ) where cache["kindowner"] != nil
-              - set(attributes["dt.kubernetes.workload.name"], cache["nameowner"]) where cache["nameowner"] != nil
-              - set(attributes["k8s.object.labels"], cache["labels"]) where cache["labels"] != nil
-              - set(attributes["k8s.pod.name"], cache["name"]) where cache["name"] != nil
-              - merge_maps(cache,cache["spec"], "upsert") where cache["spec"] != nil
-              - set(attributes["k8s.object.nodeselector"], String(cache["nodeSelector"])) where cache["nodeSelector"]!= nil
-              - set(attributes["k8s.node.name"], cache["nodeName"]) where cache["nodeName"]!= nil
-              - set(attributes["k8s.status"],cache["status"]) where cache["status"] != nil
 
       transform:
         error_mode: ignore
@@ -182,6 +226,15 @@ spec:
             - 'IsMatch(name, "kafka.consumer.*")'
             - 'type == METRIC_DATA_TYPE_SUMMARY'
 
+
+    connectors:
+
+      routing/metricskubescape:
+        default_pipelines: [ metrics/default ]
+        error_mode: ignore
+        table:
+          - statement: route() where attributes["k8s.namespace.name"] == "kubescape"
+            pipelines: [ metrics/kubescape ]
     exporters:
 
 
@@ -194,20 +247,35 @@ spec:
 
     service:
       pipelines:
+
         traces:
           receivers: [otlp]
-          processors: [memory_limiter,k8sattributes,transform,batch]
-          exporters: [otlphttp]
-        metrics:
-          receivers: [otlp,prometheus]
+          processors: [memory_limiter,k8sattributes,transform, batch ]
+          exporters: [ otlphttp]
+
+
+        metrics/prom:
+          receivers: [prometheus]
           processors: [memory_limiter,k8sattributes,filter,transform,cumulativetodelta,batch]
           exporters: [otlphttp]
+        metrics:
+          receivers: [ otlp ]
+          processors: [ memory_limiter,k8sattributes,filter,transform,cumulativetodelta,batch]
+          exporters: [ otlphttp ]
+
         logs:
           receivers: [otlp]
-          processors: [memory_limiter,k8sattributes,transform,batch]
+          processors: [memory_limiter, k8sattributes,transform,batch]
           exporters: [otlphttp]
 
+
+        logs/vulnerability:
+          receivers: [ k8sobjects ]
+          processors: [ memory_limiter ,batch ]
+          exporters: [ otlphttp ]
+
       telemetry:
+
         metrics:
           address: ${MY_POD_IP}:8888
         traces:

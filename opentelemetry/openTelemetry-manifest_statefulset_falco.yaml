@@ -9,7 +9,7 @@ spec:
   mode: statefulset
   replicas: 1
   serviceAccount: otelcontribcol
-  image: otel/opentelemetry-collector-contrib:0.110.0
+  image: otel/opentelemetry-collector-contrib:0.118.0
   observability:
     metrics:
       enableMetrics: true
@@ -189,6 +189,7 @@ spec:
         metrics:
           metric:
             - 'IsMatch(name, "kafka.consumer.*")'
+            - 'type == METRIC_DATA_TYPE_SUMMARY'
 
     exporters:
 

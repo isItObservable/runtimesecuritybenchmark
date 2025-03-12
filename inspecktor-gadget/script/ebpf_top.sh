@@ -1,0 +1,1 @@
+kubectl gadget  top ebpf
