@@ -191,7 +191,7 @@ helm repo add gadget https://inspektor-gadget.github.io/charts
 helm install gadget gadget/gadget --namespace=gadget --create-namespace -f inspecktor-gadget/values.yaml
 kubectl apply -f inspecktor-gadget/configmap.yaml -n gadget
 kubectl rollout restart ds gadget -n gadget
-kubectl apply -f inspecktor-gadget/gadget_top.yaml
+kubectl apply -f inspecktor-gadget/gadget_top.yaml -n gadget
 #### Deploy the Dynatrace Operator
 kubectl create namespace dynatrace
 kubectl apply -f https://github.com/Dynatrace/dynatrace-operator/releases/download/v1.4.0/kubernetes.yaml

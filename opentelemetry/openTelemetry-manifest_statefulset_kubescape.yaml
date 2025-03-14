@@ -53,19 +53,24 @@ spec:
         auth_type: serviceAccount
         objects:
           - name: vulnerabilitymanifests
+            mode: pull
             group: spdx.softwarecomposition.kubescape.io
             namespaces: [ kubescape ]
             interval: 15m
           - name: vulnerabilitysummaries
+            mode: pull
             group: spdx.softwarecomposition.kubescape.io
             interval: 15m
           - name: vulnerabilitymanifestsummaries
+            mode: pull
             group: spdx.softwarecomposition.kubescape.io
             interval: 15m
           - name: workloadconfigurationscansummaries
+            mode: pull
             group: spdx.softwarecomposition.kubescape.io
             interval: 15m
           - name: generatednetworkpolicies
+            mode: pull
             group: spdx.softwarecomposition.kubescape.io
             interval: 15m
       prometheus:
@@ -272,7 +277,7 @@ spec:
         logs/vulnerability:
           receivers: [ k8sobjects ]
           processors: [ memory_limiter ,batch ]
-          exporters: [ otlphttp ]
+          exporters: [ otlphttp, debug ]
 
       telemetry:
 
